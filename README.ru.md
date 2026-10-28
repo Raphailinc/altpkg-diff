@@ -1,51 +1,50 @@
-![CI](https://github.com/Raphailinc/altpkg-diff/actions/workflows/ci.yml/badge.svg)
-![Coverage](https://raw.githubusercontent.com/Raphailinc/altpkg-diff/main/badges/coverage.svg)
-
 # altpkg-diff
 
-CLI and library for diffing ALT Linux binary packages between branches. Fetches both branches in parallel with retries and outputs JSON, human-readable summaries, or GitHub-ready Markdown.
+[![CI](https://github.com/Raphailinc/altpkg-diff/actions/workflows/ci.yml/badge.svg)](https://github.com/Raphailinc/altpkg-diff/actions/workflows/ci.yml)
 
-## Highlights
-- JSON, summary, and Markdown outputs; `--limit` keeps human output compact (set `0` for unlimited).
-- Filters: architectures (`--arch`), regex by package name (`--filter`), and name-only comparison (`--ignore-arch`).
-- CI-friendly: `--fail-on-diff` exits with code `1` when differences are found.
-- Resilient HTTP client with retries, timeouts, and customizable `--user-agent` (honored even with custom sessions).
-- New CLI alias `altpkg-diff` (keeps `package-comparison` for compatibility).
-- Cleaner CLI errors: short messages by default; `--debug` shows tracebacks. Exit code `2` for missing branches, `1` for other failures.
+[English](README.md) · [Русский](README.ru.md)
 
-## Quickstart
+Python CLI и библиотека для сравнения бинарных пакетов ALT Linux между ветками. Два списка загружаются параллельно; результат доступен в JSON, кратком тексте и Markdown для GitHub.
+
+## Возможности
+
+- Сравнение пакетов с учётом архитектуры либо только по имени.
+- Фильтры архитектуры и регулярного выражения имени пакета.
+- JSON, summary и Markdown; `--limit` ограничивает число строк в человекочитаемом отчёте, `0` снимает ограничение.
+- `--fail-on-diff` возвращает код `1`, если найдены различия.
+- Ограниченное число HTTP-попыток, тайм-ауты, настраиваемый User-Agent и явные ошибки некорректного ответа API.
+- Два совместимых CLI-имени: `altpkg-diff` и `package-comparison`.
+
+## Установка и проверка
+
 ```bash
-python -m pip install -e '.[dev]' && make ci
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+make ci
 ```
-Запускает линтеры и тесты. Для простого использования без разработки можно установить пакетом:
+
+Для использования без средств разработки:
+
 ```bash
-pip install git+https://github.com/Raphailinc/altpkg-diff.git
+python -m pip install git+https://github.com/Raphailinc/altpkg-diff.git
 ```
 
-## CLI usage
+## Примеры CLI
+
 ```bash
-# defaults: sisyphus vs p10, JSON to stdout
+# По умолчанию: sisyphus и p10, JSON в stdout.
 package-comparison
 
-# same tool via shorter alias
 altpkg-diff sisyphus p10 --format summary
-
-# GitHub-ready Markdown report (first 25 rows shown) saved to file
-package-comparison sisyphus p10 --format markdown --limit 25 -o report.md
-
-# CI mode: fail on any differences, ignore arch suffixes, filter only nginx packages
-package-comparison p10 sisyphus --ignore-arch --filter nginx --fail-on-diff
+altpkg-diff sisyphus p10 --format markdown --limit 25 -o report.md
+altpkg-diff p10 sisyphus --ignore-arch --filter nginx --fail-on-diff
 ```
 
-Key options:
-- `--format json|summary|markdown|text` – choose output format (JSON honors `--pretty/--no-pretty`).
-- `--filter REGEX` – repeatable regex for package names (case-insensitive).
-- `--arch ARCH` – repeatable arch filter; `--ignore-arch` compares by name only.
-- `--limit N` – limit rows in human-readable formats (Markdown/summary); `0` shows everything.
-- `--fail-on-diff` – exit with code `1` when differences exist (useful for CI/pipelines).
-- `--timeout`, `--user-agent`, `--debug` – tune HTTP behavior and verbosity on errors.
+`--format json|summary|markdown|text` выбирает формат. `--arch` и `--filter` можно повторять. `--pretty/--no-pretty` управляет JSON. `--timeout` задаёт тайм-аут запроса, `--user-agent` — заголовок, `--debug` включает traceback вместо короткой ошибки. Неизвестная ветка возвращает код `2`, другие ошибки — `1`.
 
-## Library use
+## Использование библиотеки
+
 ```python
 from package_comparison_tool.compare import compare_packages
 
@@ -56,48 +55,31 @@ result = compare_packages(
     arches={"x86_64", "noarch"},
     name_patterns=None,
 )
-
 print(result["stats"])
-# {'only_in_branch1': ..., 'differences': ...}
 ```
 
-## API samples
+Живое сравнение обращается к внешнему API ALT Linux. Для проверки без сети используйте тесты, в которых ответы API подменены.
+
+## HTTP-контракт и конкурентность
+
+`retries` ограничивает общее число попыток вместе с первой: по умолчанию три. Внутренние адаптеры HTTP не умножают этот бюджет. Тайм-ауты, ошибки соединения и 5xx повторяются с экспоненциальной задержкой. Некорректная структура JSON вызывает `AltApiError` и не превращается в пустое сравнение.
+
+Ответы HTTP закрываются при успехе и ошибке. Созданные внутри сессии закрываются автоматически; переданная вызывающим кодом сессия остаётся открытой. Приоритет заголовков: явные `headers`, затем `user_agent`, затем `session.headers`.
+
+По умолчанию списки веток загружаются параллельно. При переданной общей сессии запросы последовательны; для независимых сессий доступны `session_factory` и `allow_concurrency_with_session=True`.
+
+## Навигация по коду
+
+- [compare.py](package_comparison_tool/compare.py) — загрузка, фильтры и сравнение.
+- [api.py](package_comparison_tool/api.py) — HTTP-клиент; [cli.py](package_comparison_tool/cli.py) — Click CLI.
+- [HTTP-контракт](tests/test_api_contract.py) — число попыток, ошибки входного API, освобождение ресурсов.
+- [examples](examples/) — примеры отчётов и конфигурации. Корневые модули сохраняют совместимые импорты.
+
+## Проверки
+
 ```bash
-# JSON diff saved to a file
-altpkg-diff p10 sisyphus --format json -o diff.json
-
-# Markdown report, name-only comparison
-altpkg-diff sisyphus p10 --ignore-arch --format markdown -o report.md
-
-# CI pipeline example (GitHub Actions step)
-pip install -e '.[dev]'
-pytest --cov=package_comparison_tool
+python -m pytest
+ruff check .
 ```
 
-## HTTP & concurrency
-- Built-in retries for timeouts/connection errors/5xx with exponential backoff; per-request timeouts (`--timeout`) and per-call user agent override (`--user-agent`).
-- Sessions created internally are closed automatically; caller-provided sessions are never closed.
-- Header precedence (per request): explicit `headers` > `user_agent` value > `session.headers` (so custom UAs are honored even with custom sessions).
-- Parallel fetches by default; if you supply a session, calls run sequentially for safety. Provide `session_factory` or `allow_concurrency_with_session=True` to fetch with two cloned/independent sessions.
-
-## Architecture
-- `package_comparison_tool/compare.py` — основная логика скачивания/сравнения RPM списков.
-- `package_comparison_tool/cli.py` — CLI на Click; `package_comparison_tool/api.py` — HTTP-клиент. Корневые модули сохраняют совместимые импорты.
-- `examples/` — примеры готовых отчётов и конфигов.
-- `tests/` — unit-тесты на респонсы/фильтры.
-
-## Quality
-- Форматирование/линт: `ruff check .`
-- Тесты: `pytest`
-- CI: GitHub Actions (`ci.yml`) — линтер + тесты на Python 3.11.
-
-## Development
-- Run tests: `pytest`
-- Lint: `ruff check .`
-
-## License
-MIT – see [LICENSE](LICENSE).
-
-## HTTP-контракт
-
-Аргумент библиотеки `retries` ограничивает общее число попыток, включая первую (по умолчанию 3). Внутренние HTTP-адаптеры не умножают этот бюджет своими повторами. Ответ без массива `packages` считается ошибкой API. Ответы HTTP закрываются при успехе и ошибке, а переданная вызывающим кодом сессия остаётся открытой.
+GitHub Actions запускает линтеры, тесты и аудит зависимостей на Python 3.11. Лицензия — [MIT](LICENSE).
