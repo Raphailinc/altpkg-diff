@@ -80,7 +80,9 @@ pytest --cov=package_comparison_tool
 ```
 
 ## HTTP & concurrency
+- The `retries` library argument is the total attempt budget, including the first request (default: 3). Internally created sessions disable adapter-level retries to prevent multiplying this budget.
 - Built-in retries for timeouts/connection errors/5xx with exponential backoff; per-request timeouts (`--timeout`) and per-call user agent override (`--user-agent`).
+- Malformed upstream JSON shapes raise `AltApiError`; they cannot silently become an empty comparison. Every HTTP response is closed on success and failure.
 - Sessions created internally are closed automatically; caller-provided sessions are never closed.
 - Header precedence (per request): explicit `headers` > `user_agent` value > `session.headers` (so custom UAs are honored even with custom sessions).
 - Parallel fetches by default; if you supply a session, calls run sequentially for safety. Provide `session_factory` or `allow_concurrency_with_session=True` to fetch with two cloned/independent sessions.
@@ -92,9 +94,9 @@ pytest --cov=package_comparison_tool
 - `tests/` — unit tests for HTTP behavior, filters, comparisons and CLI output.
 
 ## Quality
-- Форматирование/линт: `ruff check .`
-- Тесты: `pytest`
-- CI: GitHub Actions (`ci.yml`) — линтер + тесты на Python 3.11.
+- Lint: `ruff check .`
+- Tests: `pytest`
+- CI: GitHub Actions (`ci.yml`) runs lint, tests and dependency auditing on Python 3.11.
 
 ## Development
 - Run tests: `pytest`

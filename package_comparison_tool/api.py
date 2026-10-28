@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import math
 import time
 from collections.abc import Mapping
+from urllib.parse import quote
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -134,14 +136,22 @@ def fetch_branch_binary_packages(
     user agents are honored even with custom sessions. Retry/backoff applies to timeouts,
     connection errors, and 5xx/429 responses.
     """
-    if not branch:
+    if not branch or not branch.strip():
         raise ValueError("branch must be a non-empty string")
+    if not math.isfinite(timeout_s) or timeout_s <= 0:
+        raise ValueError("timeout_s must be finite and greater than zero")
+    if retries < 1:
+        raise ValueError("retries must be at least 1 (the total number of attempts)")
+    if not math.isfinite(retry_backoff) or retry_backoff < 0:
+        raise ValueError("retry_backoff must be finite and non-negative")
+    if max_packages is not None and max_packages < 1:
+        raise ValueError("max_packages must be at least 1")
 
-    url = f"{ALT_RDB_API_BASE}/branch_binary_packages/{branch}"
+    url = f"{ALT_RDB_API_BASE}/branch_binary_packages/{quote(branch, safe='')}"
     resolved_user_agent = user_agent or DEFAULT_USER_AGENT
 
     def _fetch_with_session(sess: requests.Session) -> list[PackageInfo]:
-        merged_headers = _merge_headers(sess, user_agent=resolved_user_agent, headers=headers)
+        merged_headers = _merge_headers(sess, user_agent=user_agent, headers=headers)
         response = _request_with_retries(
             sess,
             url,
@@ -151,40 +161,41 @@ def fetch_branch_binary_packages(
             backoff_factor=retry_backoff,
         )
 
-        if response.status_code == 404:
-            raise BranchNotFoundError(branch)
-
-        if response.status_code in RETRYABLE_STATUSES and retries > 1:
-            # All retryable statuses should have been retried above; reaching here means we ran out of attempts.
-            snippet = response.text[:200].replace("\n", " ")
-            raise AltApiError(f"ALT RDB API error {response.status_code} for {url}: {snippet}")
-
-        if not response.ok:
-            snippet = response.text[:200].replace("\n", " ")
-            raise AltApiError(f"ALT RDB API error {response.status_code} for {url}: {snippet}")
-
         try:
-            payload = response.json()
-        except ValueError as exc:
-            raise AltApiError("ALT RDB API returned invalid JSON response") from exc
+            if response.status_code == 404:
+                raise BranchNotFoundError(branch)
 
-        return _parse_packages_payload(payload, branch=branch, arches=arches, max_packages=max_packages)
+            if not response.ok:
+                snippet = response.text[:200].replace("\n", " ")
+                raise AltApiError(f"ALT RDB API error {response.status_code} for {url}: {snippet}")
+
+            try:
+                payload = response.json()
+            except ValueError as exc:
+                raise AltApiError("ALT RDB API returned invalid JSON response") from exc
+
+            return _parse_packages_payload(payload, branch=branch, arches=arches, max_packages=max_packages)
+        finally:
+            response.close()
 
     if session is None:
-        with create_session(user_agent=resolved_user_agent, retries=retries) as sess:
+        # The loop above owns the attempt budget. Adapter retries would multiply it.
+        with create_session(user_agent=resolved_user_agent, retries=0) as sess:
             return _fetch_with_session(sess)
 
     return _fetch_with_session(session)
 
 
 def _parse_packages_payload(
-    payload: dict[str, object] | list[object],
+    payload: object,
     *,
     branch: str,
     arches: set[str] | None,
     max_packages: int | None,
 ) -> list[PackageInfo]:
-    packages_raw = payload.get("packages", []) if isinstance(payload, dict) else []
+    if not isinstance(payload, dict) or "packages" not in payload:
+        raise AltApiError("Unexpected ALT RDB API response shape: missing 'packages' list")
+    packages_raw = payload["packages"]
     if not isinstance(packages_raw, list):
         raise AltApiError("Unexpected ALT RDB API response shape: 'packages' is not a list")
 

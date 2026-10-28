@@ -9,7 +9,7 @@ description = "Compare ALT Linux binary packages between branches with JSON/Mark
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-dependencies = ["click>=8.1", "requests>=2.31"]
+dependencies = ["click>=8.5", "requests>=2.34.2"]
 
 [project.urls]
 Repository = "https://github.com/Raphailinc/altpkg-diff"
@@ -19,7 +19,7 @@ package-comparison = "package_comparison_tool.cli:main"
 altpkg-diff = "package_comparison_tool.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-cov>=5.0.0", "ruff>=0.3.0", "responses>=0.25.0"]
+dev = ["pytest>=9.2", "pytest-cov>=7.1", "ruff>=0.17.3", "responses>=0.25.0"]
 
 [tool.setuptools]
 py-modules = ["api", "cli"]

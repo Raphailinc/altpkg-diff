@@ -42,17 +42,17 @@ from .formatting import render_result
     default=False,
     help="Compare packages by name only (ignores architecture).",
 )
-@click.option("--timeout", "timeout_s", default=30.0, show_default=True, type=float)
+@click.option("--timeout", "timeout_s", default=30.0, show_default=True, type=click.FloatRange(min=0, min_open=True))
 @click.option(
     "--max-packages",
     default=None,
-    type=int,
+    type=click.IntRange(min=1),
     hidden=True,
     help="Debug-only: limit packages fetched per branch.",
 )
 @click.option(
     "--limit",
-    type=int,
+    type=click.IntRange(min=0),
     default=25,
     show_default=True,
     help="Limit rows shown in human-readable formats (use 0 for unlimited).",
