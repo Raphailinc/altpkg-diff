@@ -3,6 +3,8 @@
 
 # altpkg-diff
 
+[English](README.md) · [Русский](README.ru.md)
+
 CLI and library for diffing ALT Linux binary packages between branches. Fetches both branches in parallel with retries and outputs JSON, human-readable summaries, or GitHub-ready Markdown.
 
 ## Highlights
@@ -15,9 +17,12 @@ CLI and library for diffing ALT Linux binary packages between branches. Fetches 
 
 ## Quickstart
 ```bash
-python -m pip install -e .[dev] && make ci
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+make ci
 ```
-Запускает линтеры и тесты. Для простого использования без разработки можно установить пакетом:
+This installs development dependencies and runs lint plus tests. To install the library and CLI:
 ```bash
 pip install git+https://github.com/Raphailinc/altpkg-diff.git
 ```
@@ -81,10 +86,10 @@ pytest --cov=package_comparison_tool
 - Parallel fetches by default; if you supply a session, calls run sequentially for safety. Provide `session_factory` or `allow_concurrency_with_session=True` to fetch with two cloned/independent sessions.
 
 ## Architecture
-- `package_comparison_tool/compare.py` — основная логика скачивания/сравнения RPM списков.
-- `cli.py` / `api.py` — CLI и FastAPI-lite интерфейс.
-- `examples/` — примеры готовых отчётов и конфигов.
-- `tests/` — unit-тесты на респонсы/фильтры.
+- `package_comparison_tool/compare.py` — package-list fetching, filtering and comparison.
+- `package_comparison_tool/cli.py` and `package_comparison_tool/api.py` — Click CLI and HTTP client helpers; root modules keep compatibility imports.
+- `examples/` — sample reports and configuration.
+- `tests/` — unit tests for HTTP behavior, filters, comparisons and CLI output.
 
 ## Quality
 - Форматирование/линт: `ruff check .`

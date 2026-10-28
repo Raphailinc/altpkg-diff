@@ -12,7 +12,7 @@ license = { file = "LICENSE" }
 dependencies = ["click>=8.1", "requests>=2.31"]
 
 [project.urls]
-Repository = "https://github.com/Raphailinc/package-comparison-tool"
+Repository = "https://github.com/Raphailinc/altpkg-diff"
 
 [project.scripts]
 package-comparison = "package_comparison_tool.cli:main"
