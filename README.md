@@ -68,14 +68,14 @@ print(result["stats"])
 
 ## API samples
 ```bash
-# JSON diff (first 5 rows)
-altpkg-diff p10 sisyphus --format json --limit 5 | head
+# JSON diff saved to a file
+altpkg-diff p10 sisyphus --format json -o diff.json
 
 # Markdown report, name-only comparison
 altpkg-diff sisyphus p10 --ignore-arch --format markdown -o report.md
 
 # CI pipeline example (GitHub Actions step)
-pip install -e .[dev]
+pip install -e '.[dev]'
 pytest --cov=package_comparison_tool
 ```
 

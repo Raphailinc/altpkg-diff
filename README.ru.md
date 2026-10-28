@@ -15,7 +15,7 @@ CLI and library for diffing ALT Linux binary packages between branches. Fetches 
 
 ## Quickstart
 ```bash
-python -m pip install -e .[dev] && make ci
+python -m pip install -e '.[dev]' && make ci
 ```
 Запускает линтеры и тесты. Для простого использования без разработки можно установить пакетом:
 ```bash
@@ -63,14 +63,14 @@ print(result["stats"])
 
 ## API samples
 ```bash
-# JSON diff (first 5 rows)
-altpkg-diff p10 sisyphus --format json --limit 5 | head
+# JSON diff saved to a file
+altpkg-diff p10 sisyphus --format json -o diff.json
 
 # Markdown report, name-only comparison
 altpkg-diff sisyphus p10 --ignore-arch --format markdown -o report.md
 
 # CI pipeline example (GitHub Actions step)
-pip install -e .[dev]
+pip install -e '.[dev]'
 pytest --cov=package_comparison_tool
 ```
 
@@ -82,7 +82,7 @@ pytest --cov=package_comparison_tool
 
 ## Architecture
 - `package_comparison_tool/compare.py` — основная логика скачивания/сравнения RPM списков.
-- `cli.py` / `api.py` — CLI и FastAPI-lite интерфейс.
+- `package_comparison_tool/cli.py` — CLI на Click; `package_comparison_tool/api.py` — HTTP-клиент. Корневые модули сохраняют совместимые импорты.
 - `examples/` — примеры готовых отчётов и конфигов.
 - `tests/` — unit-тесты на респонсы/фильтры.
 
